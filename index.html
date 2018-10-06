@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="HandheldFriendly" content="True" />
+	<meta name="MobileOptimized" content="320" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="">
+	<meta name="keywords" content="">
+	<title></title>
+<!--	<link rel="stylesheet" href="css/style.css" />-->
+	</head>
+<script src="phaser.min.js"></script>
+<script>
+	var game = new Phaser.Game(1280, 720, Phaser.AUTO, 'game-window', {
+		preload: preload
+		, create: create
+		, update: update
+	});
+
+	function preload() {
+		game.load.image('sky', 'assets/bg/blue.png');
+		game.load.image('clouds', 'assets/bg/clouds.png');
+		game.load.image('henry', 'assets/chara/henry.png');
+		game.load.image('crs', 'assets/chara/crs.png');
+		game.load.image('pacific', 'assets/chara/pacific.jpg');
+		game.load.image('marianne', 'assets/chara/marianne.png');
+		game.load.image('airbus', 'assets/chara/Airbus_A330.png');
+		game.load.audio('reemigre', 'assets/sound/henry.mp3');
+		game.load.audio('cosmopolite', 'assets/sound/pacific.wav');
+		game.load.audio('victory', 'assets/sound/victory.mp3');
+		game.load.audio('bgm', 'assets/sound/bgm.mp3');
+		game.load.audio('airbus_sound', 'assets/sound/airbus.mp3');
+	}
+
+	function create() {
+		//Graphics
+		game.add.sprite(0, 0, 'sky');
+		clouds = game.add.sprite(0, -2000, 'clouds');
+		player = game.add.sprite(game.world.width/2 - 50, game.world.height - 150, 'henry');
+
+		//Audio
+		reemigre = game.add.audio('reemigre');
+		cosmopolite = game.add.audio('cosmopolite');
+		victory = game.add.audio('victory');
+		bgm = game.add.audio('bgm');
+		airbus_sound = game.add.audio('airbus_sound');
+		bgm.loopFull();
+
+
+		decollage = function(){
+			setTimeout(function(){
+				airbus = game.add.sprite(-game.world.width, 0, 'airbus');
+				airbus.scale.x = 0.5;
+				airbus.scale.y = 0.5;
+				airbus_sound.play('',0,0.1);
+				game.add.tween(airbus.scale).to({ x: 0, y: 0}, 2000, Phaser.Easing.Linear.None, true, 1500, 0, false);
+				game.add.tween(airbus).to({ x: game.world.width, y: 0}, 3500, Phaser.Easing.Linear.None, true, 300, 0, false);
+			},3000);
+		};
+
+
+
+		//Game Variables
+		lvl = 1;
+		speed = 250;
+		speed_remain = 0;
+		score = 0;
+		antiScore = 0;
+
+		//HUD
+		scoreText = game.add.text(16, game.world.height - 50, 'Réémigrés: 0', { fontSize: '32px', fill: '#000' });
+		antiScoreText = game.add.text(game.world.width - 300, game.world.height - 50, 'Cosmopolites: 0', { fontSize: '32px', fill: '#000' });
+		bonusText = game.add.text(game.world.width/2 - 300, game.world.height - 50, 'Courage de Marianne: 0', { fontSize: '32px', fill: '#000' });
+
+		//Game Physics and Movement
+		game.physics.arcade.enable(player);
+		player.body.collideWorldBounds = true;
+		cursors = game.input.keyboard.addKeys( { 'up': Phaser.KeyCode.W, 'down': Phaser.KeyCode.S, 'left': Phaser.KeyCode.A, 'right': Phaser.KeyCode.D, 'shift': Phaser.KeyCode.SHIFT } );
+		allowMvt = false;
+		allowSpwn = false;
+		isEvent = false;
+		count = true;
+		overlap_group = [player];
+
+		pacific = game.add.group();
+		pacific.enableBody = true;
+		spawnConfig = {
+			timeToSpawn: function(){
+				return (Math.random()*1500 + 1000);
+			},
+			velocity: 100 * lvl,
+			gravity: 50 + 20 * lvl,
+			number: 0
+		};
+		bonus = game.add.group();
+		bonus.enableBody = true;
+		bonusConfig = {
+			timeToSpawn: function(){
+				return  (Math.max(Math.random()*10000 + 4000 - lvl*1500, 3000));
+			},
+			velocity: 50,
+			gravity: 250
+		};
+		reemigration = function(player, pacific) {
+			pacific.angle = 30;
+			pacific.body.velocity.y = -500;
+			if (!reemigre.isPlaying) {
+				reemigre.play();
+			}
+		};
+		speedbonus = function(player, maria) {
+			speed = 750;
+			speed_remain += 250;
+			maria.kill();
+		};
+		bonusOOB = function(item) {
+			item.kill();
+		};
+
+		//Ennemy off screen
+		killOOB = function (item) {
+			if (count){
+				if (item.y < 0) {
+					score += 1;
+					scoreText.text = 'Réémigrés: ' + score;
+					item.kill();
+					if (((score%10)===0) && (lvl<6)) {
+						lvl++;
+						player.body.velocity.y = 0;
+						player.body.velocity.x = 0;
+						allowMvt = false;
+						allowSpwn = false;
+						count = false;
+						pacific.forEachExists(function(e){
+							e.body.velocity.y = 0;
+							e.body.gravity.y = 0;
+
+						});
+						killall = function(){
+							pacific.forEachExists(function(e){
+								e.angle = 30;
+							});
+							setTimeout(function(){
+								pacific.forEachExists(function(e){
+									e.body.velocity.y = -1000;
+								});
+								game.physics.arcade.moveToXY(player, game.world.width/2 - 50, game.world.height/2 - 53, 1, 1000);
+								setTimeout(function(){
+									player.body.velocity.y = 0;
+									player.body.velocity.x = 0;
+									victory.play();
+									decollage();
+									pacific.forEachExists(function(e){
+										e.kill();
+									});
+									setTimeout(function(){
+										last_spawn_time = game.time.time;
+										last_bonus_time = game.time.time;
+										allowMvt = true;
+										allowSpwn = true;
+										count = true;
+										if (lvl <= 3) {
+											spawnConfig.velocity = 100 * lvl;
+											spawnConfig.gravity = 50 + 20 * lvl;
+										}
+										if (lvl == 3) {
+											crs1 = player.addChild(game.make.sprite(-100, 0, 'crs'));
+											crs2 = player.addChild(game.make.sprite(100, 0, 'crs'));
+											overlap_group.push(crs1, crs2);
+											game.physics.arcade.enable(crs1);
+											game.physics.arcade.enable(crs2);
+										}
+										if (lvl >=4) {
+											spawnConfig.timeToSpawn = function(){
+												return (Math.random()*1500 + 1000 - lvl * 75);
+											};
+										}
+										if (lvl == 6) {
+											spawnConfig.timeToSpawn = function(){
+												return (200);
+											};
+											spawnConfig.velocity = 100;
+											spawnConfig.gravity = 100;
+										}
+									},7000);
+								},1000);
+
+							},1000);
+						};
+						setTimeout(function(){killall()},1000);
+					}
+				}
+				else {
+					antiScore += 1;
+					antiScoreText.text = 'Cosmopolites: ' + antiScore;
+					if (!cosmopolite.isPlaying) {
+						cosmopolite.play();
+					}
+					item.kill();
+				}
+			}
+			if ((spawnConfig.number==100) && (pacific.countLiving()==0)){
+				player.body.velocity.y = 0;
+				player.body.velocity.x = 0;
+				allowMvt = false;
+				allowSpwn = false;
+				count = false;
+				game.physics.arcade.moveToXY(player, game.world.width/2 - 50, game.world.height/2 - 53, 1, 1000);
+				setTimeout(function(){
+					player.body.velocity.y = 0;
+					player.body.velocity.x = 0;
+
+					decollage();
+					endText = game.add.text(game.world.width/2 - 485, game.world.height/2 - 200, 'Vous avez réémigré !\n'+antiScore+' cosmopolites sont passés', { fontSize: '50px', fill: '#000', align: 'center' });
+				},1000);
+			}
+		}
+		time_til_spawn = Math.random()*1000 + 500;
+		bonus_spawn = Math.max(Math.random()*10000 + 4000 - lvl*1500, 3000);
+		last_spawn_time = game.time.time;
+		last_bonus_time = game.time.time;
+		startText = game.add.text(game.world.width/2 - 285, game.world.height/2 - 100, 'Repoussons\nles cosmopolites !', { fontSize: '64px', fill: '#000', align: 'center' });
+		setTimeout(function(){
+			startText.destroy();
+			allowMvt = true;
+			allowSpwn = true;
+		}, 3000);
+	};
+
+	function update() {
+		if (clouds.y === 0) {
+			clouds.y = -2000;
+		}
+		else {
+			clouds.y += 2;
+		}
+		if (allowSpwn) {
+			var current_time = game.time.time;
+			//Spawn Cosmopolite
+			if ((lvl<6) || (spawnConfig.number<100)) {
+				if(current_time - last_spawn_time > time_til_spawn){
+					time_til_spawn = spawnConfig.timeToSpawn();
+					last_spawn_time = current_time;
+					rand_x = Math.random()*1120 + 80;
+					pac = pacific.create(rand_x, 0, 'pacific');
+					if (lvl == 6){
+						spawnConfig.number++;
+					}
+					pac.body.velocity.y = spawnConfig.velocity;
+					pac.body.gravity.y = spawnConfig.gravity;
+					pac.events.onOutOfBounds.add(killOOB, this);
+					pac.checkWorldBounds = true;
+				}
+			}
+
+			//Spawn Bonus
+			if(current_time - last_bonus_time > bonus_spawn){
+				bonus_spawn = bonusConfig.timeToSpawn();
+				last_bonus_time = current_time;
+				rand_x = Math.random()*500*(Math.random() < 0.5 ? -1 : 1);
+				rand_x = Math.min(game.world.width - 150, Math.max(150, player.x + rand_x));
+				maria = bonus.create(rand_x, 0, 'marianne');
+				maria.body.velocity.y = bonusConfig.velocity;
+				maria.body.gravity.y = bonusConfig.gravity;
+				maria.events.onOutOfBounds.add(bonusOOB, this);
+				maria.checkWorldBounds = true;
+			}
+		}
+
+		if (allowMvt){
+			if (speed_remain === 0) {
+				speed = 250;
+			}
+			else {
+				speed_remain--;
+			}
+			bonusText.text = 'Courage de Marianne: ' + speed_remain;
+			overlap_group.forEach(function(item){
+				game.physics.arcade.overlap(item, pacific, reemigration, null, this);
+			});
+			game.physics.arcade.overlap(player, bonus, speedbonus, null, this);
+			player.body.velocity.y = 0;
+			player.body.velocity.x = 0;
+			if (cursors.left.isDown)
+			{
+				player.body.velocity.x = -speed;
+			}
+			else if (cursors.right.isDown)
+			{
+				player.body.velocity.x = speed;
+			}
+			if (cursors.up.isDown)
+			{
+				player.body.velocity.y = -speed;
+			}
+			else if (cursors.down.isDown)
+			{
+				player.body.velocity.y = speed;
+			}
+		}
+	}
+</script>
+<style>
+	#game-window {
+		width: 1280px;
+		margin: auto;
+	}
+	</style>
+<body>
+	<div id="game-window"></div>
+</body>
+
+</html>
