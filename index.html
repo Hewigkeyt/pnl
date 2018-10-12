@@ -78,7 +78,7 @@
 		//Game Physics and Movement
 		game.physics.arcade.enable(player);
 		player.body.collideWorldBounds = true;
-		cursors = game.input.keyboard.addKeys( { 'up': Phaser.KeyCode.W, 'down': Phaser.KeyCode.S, 'left': Phaser.KeyCode.A, 'right': Phaser.KeyCode.D, 'shift': Phaser.KeyCode.SHIFT } );
+		cursors = game.input.keyboard.addKeys( { 'up': Phaser.KeyCode.UP, 'down': Phaser.KeyCode.DOWN, 'left': Phaser.KeyCode.LEFT, 'right': Phaser.KeyCode.RIGHT, 'shift': Phaser.KeyCode.SHIFT } );
 		allowMvt = false;
 		allowSpwn = false;
 		isEvent = false;
